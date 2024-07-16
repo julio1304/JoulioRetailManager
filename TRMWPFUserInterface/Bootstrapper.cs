@@ -1,10 +1,16 @@
-﻿using Caliburn.Micro;
+﻿using AutoMapper;
+using Caliburn.Micro;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using TRMDesktopUI.Helpers;
+using TRMDesktopUI.Library.Api;
+using TRMDesktopUI.Library.Helpers;
+using TRMDesktopUI.Library.Models;
+using TRMDesktopUI.Models;
 using TRMDesktopUI.ViewModels;
-using TRMDesktopUI.Views;
 
 namespace TRMDesktopUI
 {
@@ -14,14 +20,39 @@ namespace TRMDesktopUI
         public Bootstrapper()
         {
             Initialize();
+
+            ConventionManager.AddElementConvention<PasswordBox>(
+                PasswordBoxHelper.BoundPasswordProperty,
+                "Password",
+                "PasswordChanger");
         }
 
-        protected override void Configure()
+        private IMapper ConfigureAutomapper()
         {
-            _container.Instance(_container);
+            var config = new MapperConfiguration(cfg =>
+            {
+                cfg.CreateMap<ProductModel, ProductDisplayModel>();
+                cfg.CreateMap<CartItemModel, CartItemDisplayModel>();
+            });
+
+            var output = config.CreateMapper();
+
+            return output;
+        }
+        protected override void Configure()
+        {           
+            _container.Instance(ConfigureAutomapper());
+
+            _container.Instance(_container)
+                .PerRequest<IProductEndPoint, ProductEndPoint>()
+                .PerRequest<IUserEndpoint, UserEndpoint>()
+                .PerRequest<ISaleEndpoint, SaleEndpoint>();
 
             _container.Singleton<IWindowManager, WindowManager>()
-                .Singleton<IEventAggregator, EventAggregator>();
+                .Singleton<IEventAggregator, EventAggregator>()
+                .Singleton<ILoggedInUserModel,LoggedInUserModel>()
+                .Singleton<IConfigHelper, ConfigHelper>()
+                .Singleton<IAPIHelper,APIHelper>();
 
             GetType().Assembly.GetTypes()
                 .Where(type => type.IsClass)
